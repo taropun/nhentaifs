@@ -13,8 +13,8 @@ import requests
 USER_AGENT = 'NHentaiFS 0.0.1'
 MAX_CACHE_AGE = 60*60
 REQUESTS_TIMEOUT = 10
-COVER_URL = 'https://t.nhentai.net/galleries/{}/cover.jpg'
-THUMB_URL = 'https://t.nhentai.net/galleries/{}/thumb.jpg'
+COVER_URL = 'https://t.nhentai.net/galleries/{}/cover.{}'
+THUMB_URL = 'https://t.nhentai.net/galleries/{}/thumb.{}'
 PAGE_URL = 'https://i.nhentai.net/galleries/{}/{}.{}'
 PAGE_THUMB_URL = 'https://t.nhentai.net/galleries/{}/{}t.{}'
 ALL_URL = 'https://nhentai.net/api/galleries/all?page={}'
@@ -69,6 +69,8 @@ def page_filename(page, ext, count):
 
 def json_to_gallery(json, _ctx=None):
     media_ID = json['media_id']
+    cover_ext = image_type_to_ext(json['images']['cover']['t'])
+    thumb_ext = image_type_to_ext(json['images']['thumbnail']['t'])
     image_exts = [image_type_to_ext(page['t'])
                   for page in json['images']['pages']]
     count = json['num_pages']
@@ -89,8 +91,8 @@ def json_to_gallery(json, _ctx=None):
         'tags': {tag['id']: tag_to_search_term(tag)
                  for tag in json['tags']},
         'num_pages': count,
-        'cover.jpg': COVER_URL.format(media_ID),
-        'thumb.jpg': THUMB_URL.format(media_ID),
+        'cover.{}'.format(cover_ext): COVER_URL.format(media_ID, cover_ext),
+        'thumb.{}'.format(thumb_ext): THUMB_URL.format(media_ID, thumb_ext),
         'filenames': '\n'.join(filenames),
         'pages': dict(zip(filenames, page_urls)),
         'thumbs': dict(zip(filenames, thumb_urls))
