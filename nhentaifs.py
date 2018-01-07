@@ -216,7 +216,7 @@ class NHentaiFS(fuse.Operations):
 
     def getattr_all(self, path, subpath):
         page, rest = split_path(subpath)
-        if type(try_convert(page)) is int:
+        if type(try_convert(page)) is not int:
             raise fuse.FuseOSError(errno.ENOENT)
         ctx = {'path': path, 'ctime': now()}
         galleries = self.fetch(ALL_URL.format(page),
