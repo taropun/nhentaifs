@@ -224,7 +224,7 @@ class NHentaiFS(fuse.Operations):
         self.fs['all'][int(page)] = galleries
         try:
             dig(galleries, rest)
-        except (KeyError, AttributeError):
+        except (KeyError, AttributeError, TypeError):
             raise fuse.FuseOSError(errno.ENOENT)
         return self.attrs[path]
 
@@ -236,7 +236,7 @@ class NHentaiFS(fuse.Operations):
         self.fs['gallery'][int(gallery_ID)] = gallery
         try:
             dig(gallery, rest)
-        except (KeyError, AttributeError):
+        except (KeyError, AttributeError, TypeError):
             raise fuse.FuseOSError(errno.ENOENT)
         return self.attrs[path]
 
@@ -255,7 +255,7 @@ class NHentaiFS(fuse.Operations):
         self.fs['search']['results'][int(page)] = galleries
         try:
             dig(galleries, rest)
-        except (KeyError, AttributeError):
+        except (KeyError, AttributeError, TypeError):
             raise fuse.FuseOSError(errno.ENOENT)
         return self.attrs[path]
 
@@ -275,7 +275,7 @@ class NHentaiFS(fuse.Operations):
         self.fs['tagged'][int(tag_ID)][int(page)] = galleries
         try:
             dig(galleries, rest)
-        except (KeyError, AttributeError):
+        except (KeyError, AttributeError, TypeError):
             raise fuse.FuseOSError(errno.ENOENT)
         return self.attrs[path]
 
