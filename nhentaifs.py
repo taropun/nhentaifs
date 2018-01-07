@@ -247,8 +247,11 @@ class NHentaiFS(fuse.Operations):
         if not rest:
             return self.attrs[path]
         page, rest = split_path(rest)
-        log('page, rest', path, subpath, segment, rest, split_path(rest))
+        if type(try_convert(page)) is not int:
+            raise fuse.FuseOSError(errno.ENOENT)
         query = self.extract_query().split('\n', maxsplit=1)[0]
+        if not query:
+            raise fuse.FuseOSError(errno.ENOMSG)
         ctx = {'path': path, 'ctime': now()}
         galleries = self.fetch(SEARCH_URL.format(query, page),
                                self.json_to_galleries, ctx)
