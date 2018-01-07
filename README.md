@@ -1,3 +1,7 @@
+# Setup
+
+Install [requests](http://docs.python-requests.org/en/master/) and [fusepy](https://github.com/terencehonles/fusepy) for Python 3.
+
 # Usage
 
 ```
@@ -72,7 +76,7 @@ terminal output.
 # TODO
 
 - Make use of the `num_pages`/`per_page` information in the JSON
-  responses
+  responses and pre-populate directories if possible
 - Expose more endpoints (such as an artist or tag listing)
 - Make caching/rate limiting configurable
 - Consider changing the search interface (to something like
