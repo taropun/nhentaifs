@@ -264,12 +264,16 @@ class NHentaiFS(fuse.Operations):
 
     def getattr_tagged(self, path, subpath):
         tag_ID, rest = split_path(subpath)
+        if type(try_convert(tag_ID)) is not int:
+            raise fuse.FuseOSError(errno.ENOENT)
         if not rest:
             if path not in self.attrs:
                 self.fs['tagged'][int(tag_ID)] = {}
                 self.attrs[path] = make_attrs(now(), True)
             return self.attrs[path]
         page, rest = split_path(rest)
+        if type(try_convert(page)) is not int:
+            raise fuse.FuseOSError(errno.ENOENT)
         ctx = {'path': path, 'ctime': now()}
         galleries = self.fetch(TAGGED_URL.format(tag_ID, page),
                                self.json_to_galleries, ctx)
