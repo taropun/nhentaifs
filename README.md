@@ -30,8 +30,7 @@ ls tagged/779/1 # list first 25 dickgirl galleries
   - :gallery_id
     - <gallery>
 - /search
-  - /query <- write into it
-  - /results
+  - :query
     - :page_id
       - /0
         - <gallery>
@@ -79,6 +78,4 @@ terminal output.
   responses and pre-populate directories if possible
 - Expose more endpoints (such as an artist or tag listing)
 - Make caching/rate limiting configurable
-- Consider changing the search interface (to something like
-  `search/:query/:page_id`
 - Emit an `index.html` for every directory for lazy browsing

@@ -146,20 +146,13 @@ class NHentaiFS(fuse.Operations):
         self.ctime = now()
         self.last_request = now()
         self.cache = {}
-        self.query_max = 2048
-        self.query = list(bytes(self.query_max))
-        self.fs = {'all': {},
-                   'gallery': {},
-                   'search': {'query': [], 'results': {}},
-                   'tagged': {}}
+        self.fs = {'all': {}, 'gallery': {}, 'search': {}, 'tagged': {}}
 
         self.attrs = {}
         self.attrs['/'] = make_attrs(self.ctime, True)
         self.attrs['/all'] = make_attrs(self.ctime, True)
         self.attrs['/gallery'] = make_attrs(self.ctime, True)
         self.attrs['/search'] = make_attrs(self.ctime, True)
-        self.attrs['/search/query'] = make_attrs(self.ctime, False, self.query)
-        self.attrs['/search/results'] = make_attrs(self.ctime, True)
         self.attrs['/tagged'] = make_attrs(self.ctime, True)
 
     def request(self, url):
@@ -243,21 +236,19 @@ class NHentaiFS(fuse.Operations):
         return self.attrs[path]
 
     def getattr_search(self, path, subpath):
-        segment, rest = split_path(subpath)
-        if segment != 'results':
-            raise fuse.FuseOSError(errno.ENOENT)
+        query, rest = split_path(subpath)
         if not rest:
+            if path not in self.attrs:
+                self.fs['search'][query] = {}
+                self.attrs[path] = make_attrs(now(), True)
             return self.attrs[path]
         page, rest = split_path(rest)
         if type(try_convert(page)) is not int:
             raise fuse.FuseOSError(errno.ENOENT)
-        query = self.extract_query().split('\n', maxsplit=1)[0]
-        if not query:
-            raise fuse.FuseOSError(errno.ENOMSG)
         ctx = {'path': path, 'ctime': now()}
         galleries = self.fetch(SEARCH_URL.format(query, page),
                                self.json_to_galleries, ctx)
-        self.fs['search']['results'][int(page)] = galleries
+        self.fs['search'][query][int(page)] = galleries
         try:
             dig(galleries, rest)
         except (KeyError, AttributeError, TypeError):
@@ -304,15 +295,6 @@ class NHentaiFS(fuse.Operations):
         else:
             raise fuse.FuseOSError(errno.ENOENT)
 
-    def extract_query(self):
-        try:
-            end = self.query.index(0)
-            self.attrs['/search/query']['st_size'] = end
-            return str(bytes(self.query[0:end]), 'utf-8')
-        except ValueError:
-            self.attrs['/search/query']['st_size'] = self.query_max
-            return str(bytes(self.query), 'utf-8')
-
     def read(self, path, size, offset, _fh):
         log('read', path, size, offset)
         loc = str(dig(self.fs, path[1:]))
@@ -336,32 +318,6 @@ class NHentaiFS(fuse.Operations):
         else:
             files += [str(i) for i in range(len(loc))]
         return files
-
-    def write(self, path, data, offset, _fh):
-        log('write', path, data, offset)
-        if path != '/search/query':
-            raise fuse.FuseOSError(errno.EROFS)
-        if offset + len(data) >= self.query_max:
-            raise fuse.FuseOSError(errno.EFBIG)
-        count = 0
-        for i, byte in enumerate(data):
-            self.query[offset+i] = byte
-            count += 1
-        if count < self.query_max:
-            self.query[count] = 0
-        self.attrs[path]['st_mtime'] = now()
-        # reset search cache
-        self.fs['search']['results'] = {}
-        self.attrs = {key: value for key, value in self.attrs.items()
-                      if not key.startswith('/search/results/')}
-        return count
-
-    # necessary for `echo 123 > search/query` to work
-    def truncate(self, path, length, fh=None):
-        log('truncate', path, length)
-        if path != '/search/query':
-            raise fuse.FuseOSError(errno.EROFS)
-        return 0
 
 
 def main(mountpoint):
