@@ -76,6 +76,7 @@ terminal output.
 
 - Make use of the `num_pages`/`per_page` information in the JSON
   responses and pre-populate directories if possible
-- Expose more endpoints (such as an artist or tag listing)
+- Expose more endpoints (such as artist/tag listing and related
+  galleries)
 - Make caching/rate limiting configurable
 - Emit an `index.html` for every directory for lazy browsing
