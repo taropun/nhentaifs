@@ -144,7 +144,6 @@ class NHentaiFS(fuse.Operations):
     def __init__(self, root):
         self.root = root
         self.ctime = now()
-        self.last_request = now()
         self.cache = {}
         self.fs = {'all': {}, 'gallery': {}, 'search': {}, 'tagged': {}}
 
@@ -157,12 +156,9 @@ class NHentaiFS(fuse.Operations):
 
     def request(self, url):
         log('request', url)
-        if self.last_request == now():
-            time.sleep(1)
         response = requests.get(
             url, headers={'user-agent': USER_AGENT}, timeout=REQUESTS_TIMEOUT)
         check_response(response)
-        self.last_request = now()
         if response.headers['content-type'] == 'application/json':
             return response.json()
         else:
