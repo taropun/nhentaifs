@@ -136,9 +136,10 @@ def check_response(response):
         raise fuse.FuseOSError(errno.ENOENT)
 
 
-def is_url(x):
-    return type(x) is str and (x.startswith('http://') or
-                               x.startswith('https://'))
+def is_image_url(x):
+    return (type(x) is str and
+            (x.startswith('http://') or x.startswith('https://')) and
+            x[-4:] in ['.jpg', '.png', '.gif'])
 
 
 class TimeoutCache(object):
@@ -219,13 +220,13 @@ class NHentaiFS(fuse.Operations):
         else:
             return response.content
 
-    def fetch(self, url, transformer=None, ctx=None):
-        if url[-4:] in ['.jpg', '.png', '.gif']:
-            return self.image_cache.fetch(url, self.request)
-        else:
-            def fetcher(x):
-                return transformer(self.request(x), ctx)
-            return self.json_cache.fetch(url, fetcher)
+    def fetch_json(self, url, transformer, ctx):
+        def fetcher(x):
+            return transformer(self.request(x), ctx)
+        return self.json_cache.fetch(url, fetcher)
+
+    def fetch_image(self, url):
+        return self.image_cache.fetch(url, self.request)
 
     def add_attrs(self, loc, path, ctx):
         if type(loc) is dict and 'uploaded' in loc:
@@ -250,8 +251,8 @@ class NHentaiFS(fuse.Operations):
         if type(try_convert(page)) is not int:
             raise fuse.FuseOSError(errno.ENOENT)
         ctx = {'path': path, 'ctime': now()}
-        galleries = self.fetch(ALL_URL.format(page),
-                               self.json_to_galleries, ctx)
+        galleries = self.fetch_json(ALL_URL.format(page),
+                                    self.json_to_galleries, ctx)
         self.fs['all'][int(page)] = galleries
         try:
             dig(galleries, rest)
@@ -262,8 +263,8 @@ class NHentaiFS(fuse.Operations):
     def getattr_gallery(self, path, subpath):
         gallery_ID, rest = split_path(subpath)
         ctx = {'path': path, 'ctime': now()}
-        gallery = self.fetch(GALLERY_URL.format(gallery_ID),
-                             self.json_to_gallery, ctx)
+        gallery = self.fetch_json(GALLERY_URL.format(gallery_ID),
+                                  self.json_to_gallery, ctx)
         self.fs['gallery'][int(gallery_ID)] = gallery
         try:
             dig(gallery, rest)
@@ -282,8 +283,8 @@ class NHentaiFS(fuse.Operations):
         if type(try_convert(page)) is not int:
             raise fuse.FuseOSError(errno.ENOENT)
         ctx = {'path': path, 'ctime': now()}
-        galleries = self.fetch(SEARCH_URL.format(query, page),
-                               self.json_to_galleries, ctx)
+        galleries = self.fetch_json(SEARCH_URL.format(query, page),
+                                    self.json_to_galleries, ctx)
         self.fs['search'][query][int(page)] = galleries
         try:
             dig(galleries, rest)
@@ -304,8 +305,8 @@ class NHentaiFS(fuse.Operations):
         if type(try_convert(page)) is not int:
             raise fuse.FuseOSError(errno.ENOENT)
         ctx = {'path': path, 'ctime': now()}
-        galleries = self.fetch(TAGGED_URL.format(tag_ID, page),
-                               self.json_to_galleries, ctx)
+        galleries = self.fetch_json(TAGGED_URL.format(tag_ID, page),
+                                    self.json_to_galleries, ctx)
         if int(tag_ID) not in self.fs['tagged']:
             self.fs['tagged'][int(tag_ID)] = {}
         self.fs['tagged'][int(tag_ID)][int(page)] = galleries
@@ -334,8 +335,8 @@ class NHentaiFS(fuse.Operations):
     def read(self, path, size, offset, _fh):
         log('read', path, size, offset)
         loc = str(dig(self.fs, path[1:]))
-        if is_url(loc):
-            loc = self.fetch(loc)
+        if is_image_url(loc):
+            loc = self.fetch_image(loc)
             attrs = self.attrs[path]
             attrs['st_size'] = len(loc)
             return loc[offset:offset+size]
