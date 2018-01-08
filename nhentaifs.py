@@ -11,7 +11,8 @@ import requests
 
 
 USER_AGENT = 'NHentaiFS 0.0.1'
-MAX_CACHE_AGE = 60*60
+MAX_JSON_CACHE_AGE = 60*60
+MAX_IMAGE_CACHE_SIZE = 500*1024*1024
 REQUESTS_TIMEOUT = 10
 COVER_URL = 'https://t.nhentai.net/galleries/{}/cover.{}'
 THUMB_URL = 'https://t.nhentai.net/galleries/{}/thumb.{}'
@@ -140,11 +141,65 @@ def is_url(x):
                                x.startswith('https://'))
 
 
+class TimeoutCache(object):
+    def __init__(self, max_age):
+        self.storage = {}
+        self.max_age = max_age
+
+    def add(self, key, value):
+        self.storage[key] = (now(), value)
+        return value
+
+    def fetch(self, key, fetcher):
+        if key in self.storage:
+            log('tcache hit', key)
+            timestamp, value = self.storage[key]
+            if timestamp < now() - self.max_age:
+                log('tcache outdated', key)
+                return self.add(key, fetcher(key))
+            return value
+        else:
+            log('tcache miss', key)
+            return self.add(key, fetcher(key))
+
+
+class CappedCache(object):
+    def __init__(self, max_size):
+        self.storage = {}
+        self.keys = []
+        self.max_size = max_size
+
+    def cache_too_big(self):
+        total_size = sum([len(x) for x in self.storage.values()])
+        return total_size > self.max_size
+
+    def truncate(self):
+        while self.cache_too_big():
+            key = self.keys.pop(0)
+            value = self.storage.pop(key)
+            log('ccache truncation', key, len(value))
+
+    def add(self, key, value):
+        self.storage[key] = value
+        self.keys.append(key)
+        self.truncate()
+        return value
+
+    def fetch(self, key, fetcher):
+        if key in self.storage:
+            log('ccache hit', key)
+            return self.storage[key]
+        else:
+            log('ccache miss', key)
+            return self.add(key, fetcher(key))
+
+
 class NHentaiFS(fuse.Operations):
     def __init__(self, root):
         self.root = root
         self.ctime = now()
-        self.cache = {}
+        self.json_cache = TimeoutCache(MAX_JSON_CACHE_AGE)
+        self.image_cache = CappedCache(MAX_IMAGE_CACHE_SIZE)
         self.fs = {'all': {}, 'gallery': {}, 'search': {}, 'tagged': {}}
 
         self.attrs = {}
@@ -164,28 +219,13 @@ class NHentaiFS(fuse.Operations):
         else:
             return response.content
 
-    def add_to_cache(self, url, transformer, ctx):
-        result = self.request(url)
-        if transformer:
-            result = transformer(result, ctx)
-        self.cache[url] = [now(), result]
-        return result
-
     def fetch(self, url, transformer=None, ctx=None):
-        if url in self.cache:
-            log('cache hit')
-            timestamp, response = self.cache[url]
-            if now() - timestamp > MAX_CACHE_AGE:
-                log('cache outdated')
-                return self.add_to_cache(url, transformer, ctx)
-            return response
+        if url[-4:] in ['.jpg', '.png', '.gif']:
+            return self.image_cache.fetch(url, self.request)
         else:
-            log('cache missed')
-            return self.add_to_cache(url, transformer, ctx)
-
-    def add_to_attrs_cache(self, path, attrs):
-        self.attrs[path] = attrs
-        return attrs
+            def fetcher(x):
+                return transformer(self.request(x), ctx)
+            return self.json_cache.fetch(url, fetcher)
 
     def add_attrs(self, loc, path, ctx):
         if type(loc) is dict and 'uploaded' in loc:

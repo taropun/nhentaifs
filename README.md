@@ -79,4 +79,3 @@ terminal output.
 - Expose more endpoints (such as artist/tag listing and related
   galleries)
 - Make caching/rate limiting configurable
-- Emit an `index.html` for every directory for lazy browsing
