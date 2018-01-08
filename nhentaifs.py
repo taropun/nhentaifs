@@ -334,10 +334,7 @@ class NHentaiFS(fuse.Operations):
     def read(self, path, size, offset, _fh):
         log('read', path, size, offset)
         loc = str(dig(self.fs, path[1:]))
-        if path == '/search/query':
-            query = self.extract_query()
-            return bytes(query[offset:offset+size], 'utf-8')
-        elif is_url(loc):
+        if is_url(loc):
             loc = self.fetch(loc)
             attrs = self.attrs[path]
             attrs['st_size'] = len(loc)
