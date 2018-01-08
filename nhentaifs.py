@@ -11,7 +11,7 @@ import requests
 
 
 USER_AGENT = 'NHentaiFS 0.0.1'
-MAX_JSON_CACHE_AGE = 60*60
+MAX_JSON_CACHE_AGE = 15*60
 MAX_IMAGE_CACHE_SIZE = 500*1024*1024
 REQUESTS_TIMEOUT = 10
 COVER_URL = 'https://t.nhentai.net/galleries/{}/cover.{}'
@@ -318,7 +318,7 @@ class NHentaiFS(fuse.Operations):
 
     def getattr(self, path, fh=None):
         log('getattr', path)
-        if path in self.attrs:
+        if path in ['/', '/all', '/gallery', '/search', '/tagged']:
             return self.attrs[path]
         segment, rest = split_path(path[1:])
         if segment == 'all':
