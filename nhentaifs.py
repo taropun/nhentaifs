@@ -238,8 +238,11 @@ class NHentaiFS(fuse.Operations):
         galleries = [json_to_gallery(json) for json in json['result']]
         if not galleries:
             raise fuse.FuseOSError(errno.ENOENT)
-        walk_json(galleries, self.add_attrs, path=ctx['path'], ctx=ctx)
-        return galleries
+        result = {i: gallery for i, gallery in enumerate(galleries)}
+        result['num_pages'] = json['num_pages']
+        result['per_page'] = json['per_page']
+        walk_json(result, self.add_attrs, path=ctx['path'], ctx=ctx)
+        return result
 
     def json_to_gallery(self, json, ctx):
         gallery = json_to_gallery(json)

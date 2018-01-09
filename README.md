@@ -25,6 +25,8 @@ ls tagged/779/1 # list first 25 dickgirl galleries
     - /0
       - <gallery>
     - ...
+    - /num_pages
+    - /per_page
 - /gallery
   - :gallery_id
     - <gallery>
@@ -34,12 +36,16 @@ ls tagged/779/1 # list first 25 dickgirl galleries
       - /0
         - <gallery>
       - ...
+      - /num_pages
+      - /per_page
 - /tagged
   - :tag_id
     - :page_id
       - /0
         - <gallery>
       - ...
+      - /num_pages
+      - /per_page
 ```
 
 ## Gallery
@@ -73,8 +79,6 @@ terminal output.
 
 # TODO
 
-- Make use of the `num_pages`/`per_page` information in the JSON
-  responses and pre-populate directories if possible
 - Expose more endpoints (such as artist/tag listing and related
   galleries)
 - Make caching/rate limiting configurable
