@@ -10,9 +10,8 @@ mkdir mnt
 ls all/1 # list first 25 galleries of the frontpage
 ls gallery/123 # list contents of gallery 123
 sxiv gallery/123/pages/* # read an evangelion doujin
-echo 'futa language:japanese' > search/query # search for dickgirls in moon
-ls search/results/1 # list first 25 search results
-grep futa search/results/1/0/tags/* # figure out the dickgirls tag ID
+ls search/futa+language:japanese/1 # list first 25 search results for dickgirls in moon
+grep futa search/futa+language:japanese/1/0/tags/* # figure out the dickgirls tag ID
 ls tagged/779/1 # list first 25 dickgirl galleries
 ```
 
