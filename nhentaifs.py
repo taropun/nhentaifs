@@ -10,9 +10,15 @@ import fuse
 import requests
 
 
+def get_int_env(key):
+    value = os.getenv(key)
+    if value:
+        return int(value)
+
+
 USER_AGENT = 'NHentaiFS 0.0.1'
-MAX_JSON_CACHE_AGE = 15*60
-MAX_IMAGE_CACHE_SIZE = 500*1024*1024
+MAX_JSON_CACHE_AGE = get_int_env('MAX_JSON_CACHE_AGE') or 15*60
+MAX_IMAGE_CACHE_SIZE = get_int_env('MAX_IMAGE_CACHE_SIZE') or 500*1024*1024
 REQUESTS_TIMEOUT = 10
 COVER_URL = 'https://t.nhentai.net/galleries/{}/cover.{}'
 THUMB_URL = 'https://t.nhentai.net/galleries/{}/thumb.{}'
