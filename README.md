@@ -10,6 +10,7 @@ mkdir mnt
 ls all/1 # list first 25 galleries of the frontpage
 ls gallery/123 # list contents of gallery 123
 sxiv gallery/123/pages/* # read an evangelion doujin
+ls related/123 # check out 5 related galleries
 ls search/futa+language:japanese/1 # list first 25 search results for dickgirls in moon
 grep futa search/futa+language:japanese/1/0/tags/* # figure out the dickgirls tag ID
 ls tagged/779/1 # list first 25 dickgirl galleries
@@ -46,6 +47,11 @@ ls tagged/779/1 # list first 25 dickgirl galleries
       - ...
       - /num_pages
       - /per_page
+- /related
+  - :gallery_id
+    - /0
+      - <gallery>
+    - ...
 ```
 
 ## Gallery
@@ -76,8 +82,3 @@ ls tagged/779/1 # list first 25 dickgirl galleries
 
 Run with `DEBUG=1` to log the FUSE "syscalls" and check the script's
 terminal output.
-
-# TODO
-
-- Expose more endpoints (such as artist/tag listing and related
-  galleries)

@@ -19,7 +19,7 @@ def get_int_env(key):
 USER_AGENT = 'NHentaiFS 0.0.1'
 MAX_JSON_CACHE_AGE = get_int_env('MAX_JSON_CACHE_AGE') or 15*60
 MAX_IMAGE_CACHE_SIZE = get_int_env('MAX_IMAGE_CACHE_SIZE') or 500*1024*1024
-REQUESTS_TIMEOUT = 10
+REQUESTS_TIMEOUT = get_int_env('REQUESTS_TIMEOUT') or 10
 COVER_URL = 'https://t.nhentai.net/galleries/{}/cover.{}'
 THUMB_URL = 'https://t.nhentai.net/galleries/{}/thumb.{}'
 PAGE_URL = 'https://i.nhentai.net/galleries/{}/{}.{}'
@@ -28,6 +28,7 @@ ALL_URL = 'https://nhentai.net/api/galleries/all?page={}'
 GALLERY_URL = 'https://nhentai.net/api/gallery/{}'
 SEARCH_URL = 'https://nhentai.net/api/galleries/search?query={}&page={}'
 TAGGED_URL = 'https://nhentai.net/api/galleries/tagged?tag_id={}&page={}'
+RELATED_URL = 'https://nhentai.net/api/gallery/{}/related'
 
 
 def log(prefix, *args):
@@ -207,7 +208,8 @@ class NHentaiFS(fuse.Operations):
         self.ctime = now()
         self.json_cache = TimeoutCache(MAX_JSON_CACHE_AGE)
         self.image_cache = CappedCache(MAX_IMAGE_CACHE_SIZE)
-        self.fs = {'all': {}, 'gallery': {}, 'search': {}, 'tagged': {}}
+        self.fs = {'all': {}, 'gallery': {}, 'search': {},
+                   'tagged': {}, 'related': {}}
 
         self.attrs = {}
         self.attrs['/'] = make_attrs(self.ctime, True)
@@ -215,6 +217,7 @@ class NHentaiFS(fuse.Operations):
         self.attrs['/gallery'] = make_attrs(self.ctime, True)
         self.attrs['/search'] = make_attrs(self.ctime, True)
         self.attrs['/tagged'] = make_attrs(self.ctime, True)
+        self.attrs['/related'] = make_attrs(self.ctime, True)
 
     def request(self, url):
         log('request', url)
@@ -244,6 +247,9 @@ class NHentaiFS(fuse.Operations):
         galleries = [json_to_gallery(json) for json in json['result']]
         if not galleries:
             raise fuse.FuseOSError(errno.ENOENT)
+        if 'num_pages' not in json:
+            walk_json(galleries, self.add_attrs, path=ctx['path'], ctx=ctx)
+            return galleries
         result = {i: gallery for i, gallery in enumerate(galleries)}
         result['num_pages'] = json['num_pages']
         result['per_page'] = json['per_page']
@@ -325,9 +331,23 @@ class NHentaiFS(fuse.Operations):
             raise fuse.FuseOSError(errno.ENOENT)
         return self.attrs[path]
 
+    def getattr_related(self, path, subpath):
+        gallery_ID, rest = split_path(subpath)
+        if type(try_convert(gallery_ID)) is not int:
+            raise fuse.FuseOSError(errno.ENOENT)
+        ctx = {'path': path, 'ctime': now()}
+        galleries = self.fetch_json(RELATED_URL.format(gallery_ID),
+                                    self.json_to_galleries, ctx)
+        self.fs['related'][int(gallery_ID)] = galleries
+        try:
+            dig(galleries, rest)
+        except (KeyError, AttributeError, TypeError):
+            raise fuse.FuseOSError(errno.ENOENT)
+        return self.attrs[path]
+
     def getattr(self, path, fh=None):
         log('getattr', path)
-        if path in ['/', '/all', '/gallery', '/search', '/tagged']:
+        if path in ['/', '/all', '/gallery', '/search', '/tagged', '/related']:
             return self.attrs[path]
         segment, rest = split_path(path[1:])
         if segment == 'all':
@@ -338,6 +358,8 @@ class NHentaiFS(fuse.Operations):
             return self.getattr_search(path, rest)
         elif segment == 'tagged':
             return self.getattr_tagged(path, rest)
+        elif segment == 'related':
+            return self.getattr_related(path, rest)
         else:
             raise fuse.FuseOSError(errno.ENOENT)
 
